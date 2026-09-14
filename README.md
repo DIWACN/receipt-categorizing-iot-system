@@ -6,42 +6,43 @@ Built for the "Single Board Computers and IoT Applications Development" course a
 
 ## Architecture
 
+```
 Receipt Image
-│
-▼
+     │
+     ▼
 OpenCV Preprocessing (adaptive: direct grayscale for clean scans,
-denoise+deskew+threshold fallback for noisy/photographed receipts)
-│
-▼
+                       denoise+deskew+threshold fallback for noisy/photographed receipts)
+     │
+     ▼
 Tesseract OCR → raw text
-│
-▼
+     │
+     ▼
 Local LLM (gemma2, via Ollama) → structured JSON
-(category, vendor, date, total, items)
-│
-▼
+   (category, vendor, date, total, items)
+     │
+     ▼
 Deterministic normalization (dates, decimal-comma handling)
-│
-▼
+     │
+     ▼
 SQLite Database
-│
-├──► Flask Dashboard (search, filter, display)
-│
-└──► LLM bilingual summarization (English + Hindi)
-│
-▼
-gTTS audio generation → playable in dashboard
-
-
+     │
+     ├──► Flask Dashboard (search, filter, display)
+     │
+     └──► LLM bilingual summarization (English + Hindi)
+              │
+              ▼
+          gTTS audio generation → playable in dashboard
+```
 ## Project Structure
 
-ocr/ - Image preprocessing and text extraction
-llm/ - LLM classification and summarization (via Ollama)
-db/ - SQLite schema, loading, and query functions
-dashboard/ - Flask app + HTML templates
-tts/ - Text-to-speech audio generation
-data/raw/ - Sample receipt images
-
+```
+ocr/          - Image preprocessing and text extraction
+llm/          - LLM classification and summarization (via Ollama)
+db/           - SQLite schema, loading, and query functions
+dashboard/    - Flask app + HTML templates
+tts/          - Text-to-speech audio generation
+data/raw/     - Sample receipt images
+```
 
 ## Setup
 
