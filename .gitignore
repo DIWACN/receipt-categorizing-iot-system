@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+data/audio/
+data/ocr_text/
+data/classified/
+data/processed/
+db/receipts.db
+.DS_Store
