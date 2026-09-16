@@ -1,14 +1,24 @@
-from flask import Flask, render_template, request, send_from_directory
+from flask import Flask, render_template, request, send_from_directory, redirect, url_for
 import sys
 import os
 import json
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "db"))
-from database import get_all_receipts, filter_receipts
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "ocr"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "llm"))
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "tts"))
+
+from database import get_all_receipts, filter_receipts, insert_receipt, update_summary
+from extract_text import extract_text
+from classify import classify_receipt
+from summarize import generate_receipt_summary
+from generate_audio import generate_receipt_audio
 
 app = Flask(__name__)
 
-AUDIO_FOLDER = os.path.join(os.path.dirname(__file__), "..", "data", "audio")
+BASE_DIR = os.path.join(os.path.dirname(__file__), "..")
+AUDIO_FOLDER = os.path.join(BASE_DIR, "data", "audio")
+RAW_FOLDER = os.path.join(BASE_DIR, "data", "raw")
 
 
 @app.route("/")
@@ -28,7 +38,6 @@ def index():
     else:
         rows = get_all_receipts()
 
-    # Column order: id, filename, vendor, date, total, category, items, ocr_text, recommendation_summary, created_at
     receipts = []
     for row in rows:
         summary_en, summary_hi = None, None
@@ -41,37 +50,66 @@ def index():
                 pass
 
         receipts.append({
-            "id": row[0],
-            "filename": row[1],
-            "vendor": row[2],
-            "date": row[3],
-            "total": row[4],
-            "category": row[5],
-            "item_list": row[6],
-            "summary_en": summary_en,
-            "summary_hi": summary_hi,
+            "id": row[0], "filename": row[1], "vendor": row[2], "date": row[3],
+            "total": row[4], "category": row[5], "item_list": row[6],
+            "summary_en": summary_en, "summary_hi": summary_hi,
         })
 
     categories = ["groceries", "restaurant", "fuel", "pharmacy",
                   "retail", "electronics", "hardware", "other"]
 
-    # Load aggregate summary if it exists
     aggregate = None
-    aggregate_path = os.path.join(os.path.dirname(__file__), "..", "data", "aggregate_summary.json")
+    aggregate_path = os.path.join(BASE_DIR, "data", "aggregate_summary.json")
     if os.path.exists(aggregate_path):
         with open(aggregate_path, "r", encoding="utf-8") as f:
             aggregate = json.load(f)
 
     return render_template(
-        "index.html",
-        receipts=receipts,
-        categories=categories,
-        selected_category=category,
-        search_term=search_term,
-        date_from=date_from,
-        date_to=date_to,
-        aggregate=aggregate
+        "index.html", receipts=receipts, categories=categories,
+        selected_category=category, search_term=search_term,
+        date_from=date_from, date_to=date_to, aggregate=aggregate
     )
+
+
+@app.route("/upload", methods=["POST"])
+def upload():
+    file = request.files.get("receipt_image")
+    if not file or file.filename == "":
+        return redirect(url_for("index"))
+
+    os.makedirs(RAW_FOLDER, exist_ok=True)
+    filename = file.filename
+    save_path = os.path.join(RAW_FOLDER, filename)
+    file.save(save_path)
+
+    base_name = os.path.splitext(filename)[0]
+
+    ocr_text = extract_text(save_path)
+
+    result = classify_receipt(ocr_text)
+    if not result:
+        return redirect(url_for("index"))
+
+    insert_receipt(
+        filename=base_name,
+        vendor=result.get("vendor"),
+        date=result.get("date"),
+        total=result.get("total"),
+        category=result.get("category"),
+        items=result.get("items", []),
+        ocr_text=ocr_text
+    )
+
+    summary = generate_receipt_summary(
+        result.get("vendor"), result.get("date"),
+        result.get("category"), result.get("total"), result.get("items")
+    )
+    if summary:
+        summary_json = json.dumps(summary, ensure_ascii=False)
+        update_summary(base_name, summary_json)
+        generate_receipt_audio(base_name, summary_json)
+
+    return redirect(url_for("index"))
 
 
 @app.route("/audio/<path:filename>")
