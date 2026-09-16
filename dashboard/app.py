@@ -11,8 +11,8 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", "tts"))
 from database import get_all_receipts, filter_receipts, insert_receipt, update_summary
 from extract_text import extract_text
 from classify import classify_receipt
-from summarize import generate_receipt_summary
-from generate_audio import generate_receipt_audio
+from summarize import generate_receipt_summary, generate_aggregate_summary
+from generate_audio import generate_receipt_audio, generate_audio_for_text
 
 app = Flask(__name__)
 
@@ -84,12 +84,15 @@ def upload():
 
     base_name = os.path.splitext(filename)[0]
 
+    # 1. OCR
     ocr_text = extract_text(save_path)
 
+    # 2. Classify
     result = classify_receipt(ocr_text)
     if not result:
         return redirect(url_for("index"))
 
+    # 3. Store in DB
     insert_receipt(
         filename=base_name,
         vendor=result.get("vendor"),
@@ -100,6 +103,7 @@ def upload():
         ocr_text=ocr_text
     )
 
+    # 4. Summarize this receipt
     summary = generate_receipt_summary(
         result.get("vendor"), result.get("date"),
         result.get("category"), result.get("total"), result.get("items")
@@ -107,7 +111,24 @@ def upload():
     if summary:
         summary_json = json.dumps(summary, ensure_ascii=False)
         update_summary(base_name, summary_json)
+
+        # 5. Generate audio for this receipt
         generate_receipt_audio(base_name, summary_json)
+
+    # 6. Regenerate the aggregate summary + audio so the dashboard reflects the new receipt
+    all_rows = get_all_receipts()
+    aggregate = generate_aggregate_summary(all_rows)
+    if aggregate:
+        aggregate_json = json.dumps(aggregate, ensure_ascii=False, indent=2)
+        with open(os.path.join(BASE_DIR, "data", "aggregate_summary.json"), "w", encoding="utf-8") as f:
+            f.write(aggregate_json)
+
+        en_path = os.path.join(AUDIO_FOLDER, "aggregate_en.mp3")
+        hi_path = os.path.join(AUDIO_FOLDER, "aggregate_hi.mp3")
+        if aggregate.get("summary_en"):
+            generate_audio_for_text(aggregate["summary_en"], "en", en_path)
+        if aggregate.get("summary_hi"):
+            generate_audio_for_text(aggregate["summary_hi"], "hi", hi_path)
 
     return redirect(url_for("index"))
 
