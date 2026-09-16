@@ -39,11 +39,12 @@
     <div class="upload-box">
         <label><strong>Or capture with camera:</strong></label>
         <br><br>
-        <video id="camera-preview" width="320" height="240" autoplay style="border-radius: 8px; background: #000;"></video>
+        <video id="camera-preview" width="320" height="240" autoplay style="border-radius: 8px; background: #000; display: none;"></video>
         <canvas id="camera-canvas" width="320" height="240" style="display: none;"></canvas>
         <br>
         <button type="button" id="start-camera-btn" style="padding: 8px 16px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">Start Camera</button>
-        <button type="button" id="capture-btn" style="padding: 8px 16px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; display: none;">Capture & Process</button>
+        <button type="button" id="capture-btn" style="padding: 8px 16px; background: #2a7a2a; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; display: none;">Capture & Process</button>
+        <button type="button" id="stop-camera-btn" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; display: none;">Close Camera</button>
     </div>
 
     {% if aggregate %}
@@ -116,18 +117,35 @@
         const canvas = document.getElementById('camera-canvas');
         const startBtn = document.getElementById('start-camera-btn');
         const captureBtn = document.getElementById('capture-btn');
+        const stopBtn = document.getElementById('stop-camera-btn');
         let stream = null;
+
+        function stopCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            video.style.display = 'none';
+            video.srcObject = null;
+            startBtn.style.display = 'inline-block';
+            captureBtn.style.display = 'none';
+            stopBtn.style.display = 'none';
+        }
 
         startBtn.addEventListener('click', async () => {
             try {
                 stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 video.srcObject = stream;
+                video.style.display = 'block';
                 startBtn.style.display = 'none';
                 captureBtn.style.display = 'inline-block';
+                stopBtn.style.display = 'inline-block';
             } catch (err) {
                 alert('Could not access camera: ' + err.message);
             }
         });
+
+        stopBtn.addEventListener('click', stopCamera);
 
         captureBtn.addEventListener('click', () => {
             const context = canvas.getContext('2d');
@@ -140,15 +158,19 @@
 
                 captureBtn.textContent = 'Processing...';
                 captureBtn.disabled = true;
+                stopBtn.disabled = true;
 
                 fetch('/upload', {
                     method: 'POST',
                     body: formData
                 }).then(() => {
+                    stopCamera();
                     window.location.reload();
                 });
             }, 'image/jpeg');
         });
+
+        window.addEventListener('beforeunload', stopCamera);
     </script>
 </body>
 </html>
