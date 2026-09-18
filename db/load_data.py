@@ -24,17 +24,17 @@ def load_all():
             with open(ocr_text_path, "r", encoding="utf-8") as f:
                 ocr_text = f.read()
 
-    insert_receipt(
-    filename=base_name,
-    vendor=data.get("vendor"),
-    address=data.get("address"),
-    date=data.get("date"),
-    total=data.get("total"),
-    category=data.get("category"),
-    items=data.get("items", []),
-    ocr_text=ocr_text
-    )
-    print(f"Loaded into DB: {base_name}")
+        insert_receipt(
+            filename=base_name,
+            vendor=data.get("vendor"),
+            address=data.get("address"),
+            date=data.get("date"),
+            total=data.get("total"),
+            category=data.get("category"),
+            items=data.get("items", []),
+            ocr_text=ocr_text
+        )
+        print(f"Loaded into DB: {base_name}")
 
 
 if __name__ == "__main__":
