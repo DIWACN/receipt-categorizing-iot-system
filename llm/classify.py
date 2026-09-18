@@ -20,6 +20,7 @@ Return ONLY a valid JSON object with this exact structure, and nothing else - no
 {{
   "category": "one of the categories listed above",
   "vendor": "the store or business name",
+  "address": "the store's address as it appears in the text, or null if not present",
   "date": "the transaction date, as it appears in the text",
   "total": "the final total amount, as it appears in the text",
   "items": ["short list of item names purchased"]

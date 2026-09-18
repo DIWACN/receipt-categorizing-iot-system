@@ -12,24 +12,25 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS receipts (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            filename TEXT UNIQUE,
-            vendor TEXT,
-            date TEXT,
-            total REAL,
-            category TEXT,
-            items TEXT,
-            ocr_text TEXT,
-            recommendation_summary TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
+    CREATE TABLE IF NOT EXISTS receipts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        filename TEXT UNIQUE,
+        vendor TEXT,
+        address TEXT,
+        date TEXT,
+        total REAL,
+        category TEXT,
+        items TEXT,
+        ocr_text TEXT,
+        recommendation_summary TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+""")
     conn.commit()
     conn.close()
 
 
-def insert_receipt(filename, vendor, date, total, category, items, ocr_text, recommendation_summary=None):
+def insert_receipt(filename, vendor, address, date, total, category, items, ocr_text, recommendation_summary=None):
     """
     Inserts one receipt record. Uses INSERT OR IGNORE so re-running the
     loader never wipes an existing receipt's recommendation_summary.
@@ -40,9 +41,9 @@ def insert_receipt(filename, vendor, date, total, category, items, ocr_text, rec
 
     cursor.execute("""
         INSERT OR IGNORE INTO receipts
-        (filename, vendor, date, total, category, items, ocr_text, recommendation_summary)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, (filename, vendor, date, total, category, items_str, ocr_text, recommendation_summary))
+        (filename, vendor, address, date, total, category, items, ocr_text, recommendation_summary)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (filename, vendor, address, date, total, category, items_str, ocr_text, recommendation_summary))
 
     conn.commit()
     conn.close()

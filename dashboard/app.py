@@ -94,14 +94,15 @@ def upload():
 
     # 3. Store in DB
     insert_receipt(
-        filename=base_name,
-        vendor=result.get("vendor"),
-        date=result.get("date"),
-        total=result.get("total"),
-        category=result.get("category"),
-        items=result.get("items", []),
-        ocr_text=ocr_text
-    )
+    filename=base_name,
+    vendor=result.get("vendor"),
+    address=result.get("address"),
+    date=result.get("date"),
+    total=result.get("total"),
+    category=result.get("category"),
+    items=result.get("items", []),
+    ocr_text=ocr_text
+)
 
     # 4. Summarize this receipt
     summary = generate_receipt_summary(
