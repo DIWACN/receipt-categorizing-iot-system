@@ -41,17 +41,17 @@ def index():
     receipts = []
     for row in rows:
         summary_en, summary_hi = None, None
-        if row[8]:
+        if row[9]:
             try:
-                parsed = json.loads(row[8])
+                parsed = json.loads(row[9])
                 summary_en = parsed.get("summary_en")
                 summary_hi = parsed.get("summary_hi")
             except (json.JSONDecodeError, TypeError):
                 pass
 
         receipts.append({
-            "id": row[0], "filename": row[1], "vendor": row[2], "date": row[3],
-            "total": row[4], "category": row[5], "item_list": row[6],
+            "id": row[0], "filename": row[1], "vendor": row[2], "address": row[3],
+            "date": row[4], "total": row[5], "category": row[6], "item_list": row[7],
             "summary_en": summary_en, "summary_hi": summary_hi,
         })
 
