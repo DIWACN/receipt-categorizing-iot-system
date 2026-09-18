@@ -82,6 +82,7 @@
     <table>
         <tr>
             <th>Vendor</th>
+            <th>Address</th>
             <th>Date</th>
             <th>Category</th>
             <th>Total</th>
@@ -91,6 +92,7 @@
         {% for r in receipts %}
         <tr>
             <td>{{ r.vendor }}</td>
+            <td>{{ r.address }}</td>
             <td>{{ r.date }}</td>
             <td><span class="category-tag">{{ r.category }}</span></td>
             <td>{{ r.total }}</td>
