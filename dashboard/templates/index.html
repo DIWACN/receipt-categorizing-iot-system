@@ -1,178 +1,1087 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Receipt Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f7f7f7; }
-        h1 { color: #333; }
-        .upload-box { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .upload-box label { font-weight: bold; margin-right: 10px; }
-        .upload-box button { padding: 8px 16px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; margin-left: 10px; }
-        .aggregate-box { background: #333; color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .aggregate-box p { margin: 6px 0; }
-        .aggregate-box audio { margin-top: 8px; margin-right: 10px; }
-        .filters { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
-        .filters label { margin-right: 8px; font-weight: bold; }
-        .filters input, .filters select { padding: 6px; margin-right: 15px; margin-bottom: 10px; }
-        .filters button { padding: 8px 16px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; vertical-align: top; }
-        th { background: #333; color: white; }
-        tr:hover { background: #f0f0f0; }
-        .category-tag { padding: 3px 10px; border-radius: 12px; background: #e0e0e0; font-size: 0.85em; }
-        .no-results { padding: 20px; text-align: center; color: #888; }
-        .summary-text { font-size: 0.9em; color: #444; margin-bottom: 6px; }
-        .summary-text strong { color: #000; }
-        audio { width: 220px; height: 32px; display: block; margin-bottom: 4px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#ece7dc">
+<title>Receipt Ledger</title>
+<link rel="stylesheet" href="/static/fonts/fonts.css">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   RECEIPT LEDGER
+   A machine reading paper. Bone stock, warm ink, one vermilion stamp.
+   Hairline rules instead of shadows; serrated slips instead of cards.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --paper:      #ece7dc;   /* manila desk */
+  --slip:       #fbf9f5;   /* thermal stock */
+  --slip-2:     #f3efe6;
+  --ink:        #191612;   /* warm near-black */
+  --ink-2:      #5c554a;
+  --ink-3:      #8d8578;
+  --rule:       #cdc4b4;
+  --rule-soft:  #ded6c8;
+  --stamp:      #c0381a;   /* vermilion */
+  --stamp-ink:  #fbf9f5;
+  --stamp-wash: rgba(192, 56, 26, .09);
+
+  --c-groceries:   #4a6b34;
+  --c-restaurant:  #a8571c;
+  --c-fuel:        #2f5d78;
+  --c-pharmacy:    #9c3050;
+  --c-retail:      #6b4a86;
+  --c-electronics: #1f6a6c;
+  --c-hardware:    #7a6524;
+  --c-other:       #7d766a;
+
+  --serif: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+  --mono:  'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --deva:  'Kohinoor Devanagari', 'Noto Sans Devanagari', 'Nirmala UI', sans-serif;
+
+  --grain-blend: multiply;
+  --grain-alpha: .38;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper:      #131110;
+    --slip:       #1c1917;
+    --slip-2:     #232020;
+    --ink:        #ebe5d9;
+    --ink-2:      #a09788;
+    --ink-3:      #6d6659;
+    --rule:       #332e28;
+    --rule-soft:  #272320;
+    --stamp:      #e2603c;
+    --stamp-ink:  #131110;
+    --stamp-wash: rgba(226, 96, 60, .12);
+
+    --c-groceries:   #8fbb6e;
+    --c-restaurant:  #e0964f;
+    --c-fuel:        #77aacb;
+    --c-pharmacy:    #dd7d99;
+    --c-retail:      #b294d0;
+    --c-electronics: #5fb6b8;
+    --c-hardware:    #c9ad5a;
+    --c-other:       #9b9386;
+
+    --grain-blend: overlay;
+    --grain-alpha: .22;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--mono);
+  font-size: 13.5px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* paper grain — fixed so it reads as stock, not as a texture that scrolls */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  pointer-events: none;
+  opacity: var(--grain-alpha);
+  mix-blend-mode: var(--grain-blend);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+:where(a) { color: var(--stamp); }
+
+.sheet { max-width: 1140px; margin: 0 auto; padding: 0 26px 110px; }
+@media (max-width: 620px) { .sheet { padding: 0 16px 80px; } }
+
+/* ─────────── typographic primitives ─────────── */
+
+.label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .19em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.rule-double {
+  border: 0;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  height: 3px;
+  margin: 0;
+}
+
+/* section headers: 01 — CAPTURE */
+.chapter {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 44px 0 14px;
+}
+.chapter .num {
+  font-family: var(--serif);
+  font-size: 1.3rem;
+  color: var(--stamp);
+  line-height: 1;
+}
+.chapter .name {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+}
+.chapter .fill { flex: 1; border-bottom: 1px solid var(--rule); transform: translateY(-3px); }
+
+/* ═══════════ masthead ═══════════ */
+
+.masthead { padding: 34px 0 0; }
+.masthead-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.wordmark {
+  font-family: var(--serif);
+  font-size: clamp(2.6rem, 7vw, 4.4rem);
+  line-height: .88;
+  letter-spacing: -.015em;
+  margin: 0;
+  font-weight: 400;
+}
+.wordmark em {
+  font-style: italic;
+  color: var(--stamp);
+}
+.masthead-figure { text-align: right; }
+.masthead-figure .amount {
+  font-family: var(--serif);
+  font-size: clamp(1.7rem, 4vw, 2.5rem);
+  line-height: 1;
+  display: block;
+  font-variant-numeric: tabular-nums;
+}
+.masthead-figure .amount span { font-size: .5em; color: var(--ink-3); margin-right: .3em; }
+
+/* colophon strip under the double rule */
+.colophon {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border-bottom: 1px solid var(--rule);
+}
+.colophon div {
+  padding: 9px 18px 9px 0;
+  margin-right: 18px;
+  border-right: 1px solid var(--rule-soft);
+  font-size: 10px;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.colophon div:last-child { border-right: 0; }
+.colophon b {
+  color: var(--ink);
+  font-weight: 500;
+  letter-spacing: .08em;
+}
+@media (max-width: 620px) {
+  .colophon div { padding-right: 12px; margin-right: 12px; font-size: 9px; }
+}
+
+/* ═══════════ notices ═══════════ */
+
+.notice {
+  border: 1px solid var(--stamp);
+  border-left-width: 4px;
+  background: var(--stamp-wash);
+  color: var(--ink);
+  padding: 12px 15px;
+  margin: 26px 0 0;
+  font-size: 12.5px;
+}
+.notice b { color: var(--stamp); letter-spacing: .1em; text-transform: uppercase; font-size: 10px; }
+
+/* ═══════════ capture bench ═══════════ */
+
+.bench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, .92fr);
+  gap: 34px;
+  align-items: start;
+}
+@media (max-width: 800px) { .bench { grid-template-columns: 1fr; gap: 24px; } }
+
+/* scanner bed with corner registration marks */
+.bed {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #0d0c0b;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.bed video { width: 100%; height: 100%; object-fit: cover; display: none; }
+.bed.live video { display: block; }
+.bed .idle { text-align: center; color: #6b6459; padding: 20px; }
+.bed.live .idle { display: none; }
+.bed .idle .glyph {
+  font-family: var(--serif);
+  font-size: 2.6rem;
+  color: #3a352e;
+  display: block;
+  line-height: 1;
+  margin-bottom: 10px;
+}
+.bed .idle span.label { color: #6b6459; }
+
+/* registration crosshairs, drawn in vermilion at each corner */
+.bed .reg {
+  position: absolute;
+  width: 26px; height: 26px;
+  border: 2px solid var(--stamp);
+  opacity: .85;
+  pointer-events: none;
+}
+.bed .reg.tl { top: 14px;    left: 14px;  border-right: 0; border-bottom: 0; }
+.bed .reg.tr { top: 14px;    right: 14px; border-left: 0;  border-bottom: 0; }
+.bed .reg.bl { bottom: 14px; left: 14px;  border-right: 0; border-top: 0; }
+.bed .reg.br { bottom: 14px; right: 14px; border-left: 0;  border-top: 0; }
+
+.bed-caption {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-top: 1px solid var(--rule);
+  padding-top: 7px;
+  margin-top: 7px;
+}
+
+/* ─────────── controls ─────────── */
+
+.btn {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  padding: 13px 20px;
+  min-height: 46px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  border-radius: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.btn:hover { background: var(--ink); color: var(--paper); }
+.btn:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.btn:active { transform: translate(1px, 1px); }
+.btn[disabled] { opacity: .4; cursor: not-allowed; }
+.btn[disabled]:hover { background: transparent; color: var(--ink); }
+
+.btn-stamp {
+  background: var(--stamp);
+  border-color: var(--stamp);
+  color: var(--stamp-ink);
+}
+.btn-stamp:hover { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+
+.controls { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+.controls .btn { width: 100%; }
+
+.lede {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  line-height: 1.3;
+  margin: 0 0 10px;
+}
+.prose { color: var(--ink-2); font-size: 12.5px; margin: 0; max-width: 46ch; }
+
+.or-rule {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 22px 0 14px;
+}
+.or-rule::before, .or-rule::after {
+  content: ""; flex: 1; border-bottom: 1px solid var(--rule);
+}
+
+input[type=file] {
+  font-family: var(--mono);
+  font-size: 11px;
+  width: 100%;
+  color: var(--ink-2);
+  padding: 11px;
+  background: var(--slip);
+  border: 1px dashed var(--rule);
+}
+input[type=file]::file-selector-button {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  margin-right: 12px;
+  padding: 7px 13px;
+  border: 1px solid var(--ink);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ═══════════ account summary ═══════════ */
+
+.account { display: grid; grid-template-columns: 1fr 1fr; }
+@media (max-width: 800px) { .account { grid-template-columns: 1fr; } }
+.account > div { padding: 20px 26px 22px 0; }
+.account > div + div {
+  border-left: 1px solid var(--rule);
+  padding-left: 26px;
+}
+@media (max-width: 800px) {
+  .account > div { padding: 18px 0; }
+  .account > div + div { border-left: 0; border-top: 1px solid var(--rule); padding-left: 0; }
+}
+.account p {
+  font-family: var(--serif);
+  font-size: 1.22rem;
+  line-height: 1.4;
+  margin: 8px 0 14px;
+}
+.account p.hi { font-family: var(--deva); font-size: 1rem; line-height: 1.7; }
+
+/* ═══════════ query strip ═══════════ */
+
+.query {
+  display: grid;
+  grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: end;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+}
+@media (max-width: 900px) { .query { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 520px) { .query { grid-template-columns: 1fr; gap: 14px; } }
+
+.fld { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fld input, .fld select {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ink);
+  border-radius: 0;
+  padding: 7px 2px;
+  min-height: 36px;
+  width: 100%;
+}
+/* appearance:none drops the native chevron, so draw one back in — without it
+   the category field reads as a plain text input. currentColor keeps it
+   correct in both themes. */
+.fld select {
+  appearance: none;
+  cursor: pointer;
+  padding-right: 20px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: right 7px top 17px, right 2px top 17px;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+.fld input:focus, .fld select:focus {
+  outline: none;
+  border-bottom-color: var(--stamp);
+  border-bottom-width: 2px;
+  padding-bottom: 6px;
+}
+.fld input::placeholder { color: var(--ink-3); }
+
+/* ═══════════ ledger status line ═══════════ */
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 18px 0 26px;
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.status .mark {
+  color: var(--stamp);
+  border: 1px solid var(--stamp);
+  padding: 3px 9px;
+  font-weight: 600;
+  letter-spacing: .17em;
+}
+.status a { color: var(--ink); text-decoration: none; border-bottom: 1px solid var(--stamp); padding-bottom: 2px; }
+.status a:hover { color: var(--stamp); }
+
+/* ═══════════ receipt slips ═══════════ */
+
+.slips {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(318px, 1fr));
+  gap: 26px;
+  align-items: start;
+}
+@media (max-width: 420px) { .slips { grid-template-columns: 1fr; } }
+
+/* The shadow lives on a wrapper: CSS applies `filter` BEFORE `mask`, so a
+   drop-shadow on the slip itself would be masked away with the teeth. On the
+   parent it sees the already-serrated child and traces its edge. */
+.mount {
+  filter: drop-shadow(0 1px 1px rgba(40, 30, 16, .10))
+          drop-shadow(0 10px 18px rgba(40, 30, 16, .09));
+  animation: feed .5s cubic-bezier(.2, .7, .3, 1) backwards;
+}
+@media (prefers-color-scheme: dark) {
+  .mount {
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5))
+            drop-shadow(0 10px 20px rgba(0, 0, 0, .4));
+  }
+}
+@keyframes feed {
+  from { opacity: 0; transform: translateY(14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mount { animation: none; }
+}
+
+.slip {
+  --tooth: 7px;
+  position: relative;
+  background: var(--slip);
+  padding: 26px 22px 24px;
+  /* serrated top and bottom edge, like a torn thermal slip */
+  -webkit-mask:
+    radial-gradient(var(--tooth) at 50% 0, #0000 97%, #000) 50% 0 / calc(2 * var(--tooth)) var(--tooth) repeat-x,
+    linear-gradient(#000 0 0) 50% 50% / 100% calc(100% - 2 * var(--tooth)) no-repeat,
+    radial-gradient(var(--tooth) at 50% 100%, #0000 97%, #000) 50% 100% / calc(2 * var(--tooth)) var(--tooth) repeat-x;
+  mask:
+    radial-gradient(var(--tooth) at 50% 0, #0000 97%, #000) 50% 0 / calc(2 * var(--tooth)) var(--tooth) repeat-x,
+    linear-gradient(#000 0 0) 50% 50% / 100% calc(100% - 2 * var(--tooth)) no-repeat,
+    radial-gradient(var(--tooth) at 50% 100%, #0000 97%, #000) 50% 100% / calc(2 * var(--tooth)) var(--tooth) repeat-x;
+}
+
+.slip-head { text-align: center; padding-bottom: 14px; }
+.slip-vendor {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.slip-addr {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  margin: 6px 0 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.tear { border: 0; border-top: 1px dashed var(--rule); margin: 0; }
+
+/* dotted leader rows — the detail that makes it read as a receipt */
+.row {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 5px 0;
+  font-size: 11.5px;
+}
+.row .k { color: var(--ink-3); text-transform: uppercase; letter-spacing: .1em; font-size: 10px; }
+.row .dots { flex: 1; border-bottom: 1px dotted var(--rule); transform: translateY(-3px); min-width: 14px; }
+.row .v { font-variant-numeric: tabular-nums; text-align: right; }
+
+.cat { display: inline-flex; align-items: center; gap: 6px; text-transform: uppercase; letter-spacing: .1em; font-size: 10px; font-weight: 600; }
+.cat i { width: 7px; height: 7px; display: block; background: var(--c-other); }
+.cat-groceries i   { background: var(--c-groceries); }
+.cat-restaurant i  { background: var(--c-restaurant); }
+.cat-fuel i        { background: var(--c-fuel); }
+.cat-pharmacy i    { background: var(--c-pharmacy); }
+.cat-retail i      { background: var(--c-retail); }
+.cat-electronics i { background: var(--c-electronics); }
+.cat-hardware i    { background: var(--c-hardware); }
+
+.items {
+  font-size: 10.5px;
+  color: var(--ink-2);
+  line-height: 1.75;
+  padding: 12px 0;
+  overflow-wrap: anywhere;
+}
+
+.total-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0 14px;
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+}
+.total-row .k { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; }
+.total-row .v {
+  font-family: var(--serif);
+  font-size: 2.1rem;
+  line-height: .95;
+  font-variant-numeric: tabular-nums;
+}
+.total-row .v small { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: .1em; margin-right: 6px; vertical-align: .55em; }
+
+.gloss { padding-top: 14px; }
+.gloss .lang {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  display: block;
+  margin-bottom: 5px;
+}
+.gloss p { font-size: 11.5px; color: var(--ink-2); margin: 0 0 9px; line-height: 1.65; }
+.gloss p.hi { font-family: var(--deva); font-size: 12px; line-height: 1.8; }
+.gloss + .gloss { margin-top: 14px; border-top: 1px dashed var(--rule); }
+
+audio {
+  width: 100%;
+  height: 30px;
+  display: block;
+  filter: grayscale(1) contrast(.9);
+  opacity: .8;
+}
+audio:hover { opacity: 1; }
+
+/* rubber stamp on a freshly captured slip */
+.slip.fresh { background: var(--slip-2); }
+.stamp {
+  position: absolute;
+  top: 18px; right: -6px;
+  transform: rotate(6deg);
+  border: 2px solid var(--stamp);
+  color: var(--stamp);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  opacity: .9;
+  pointer-events: none;
+}
+
+.void {
+  border: 1px dashed var(--rule);
+  padding: 64px 24px;
+  text-align: center;
+}
+.void .glyph { font-family: var(--serif); font-size: 2.4rem; color: var(--ink-3); display: block; margin-bottom: 8px; }
+
+/* ═══════════ processing overlay ═══════════ */
+
+.press {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: none;
+  place-items: center;
+  padding: 22px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+}
+.press.on { display: grid; }
+.press-slip {
+  background: var(--slip);
+  border: 1px solid var(--ink);
+  width: min(390px, 100%);
+  padding: 26px 24px 22px;
+}
+.press-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--ink);
+  padding-bottom: 9px;
+  margin-bottom: 4px;
+}
+.press-head h3 {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 400;
+}
+#ov-elapsed { font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: 11px; }
+
+/* a platen bar that sweeps, instead of a generic circular spinner */
+.platen {
+  height: 3px;
+  background: var(--rule-soft);
+  overflow: hidden;
+  margin: 14px 0 16px;
+}
+.platen i {
+  display: block;
+  height: 100%;
+  width: 34%;
+  background: var(--stamp);
+  animation: feedbar 1.25s cubic-bezier(.65, 0, .35, 1) infinite;
+}
+@keyframes feedbar {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(330%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .platen i { animation-duration: 3.4s; }
+}
+
+#ov-stage { margin: 0; font-size: 12px; color: var(--ink-2); min-height: 1.5em; }
+
+.log { list-style: none; margin: 16px 0 0; padding: 0; }
+.log li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 10.5px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.log li .tick {
+  width: 1.1em;
+  flex: none;
+  text-align: center;
+  color: var(--rule);
+}
+.log li.active { color: var(--ink); }
+.log li.active .tick { color: var(--stamp); }
+.log li.done .tick { color: var(--ink-2); }
+
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+</style>
 </head>
 <body>
-    <h1>Receipt Dashboard</h1>
 
-    <form class="upload-box" action="/upload" method="post" enctype="multipart/form-data">
-        <label for="receipt_image">Upload a new receipt:</label>
+<div class="sheet">
+
+  <!-- ═══════════ masthead ═══════════ -->
+  <header class="masthead">
+    <div class="masthead-top">
+      <h1 class="wordmark">Receipt<br><em>Ledger</em></h1>
+      <div class="masthead-figure">
+        <span class="label">Total recorded</span>
+        <span class="amount"><span>RM</span>{{ '{:,.2f}'.format(total_spent or 0) }}</span>
+      </div>
+    </div>
+    <hr class="rule-double">
+    <div class="colophon">
+      <div>Records <b>{{ total_count }}</b></div>
+      <div>Capture <b>Tesseract OCR</b></div>
+      <div>Classify <b>Gemma2 · local</b></div>
+      <div>Voice <b>EN · हिंदी</b></div>
+    </div>
+  </header>
+
+  {% if error %}
+  <p class="notice" role="alert"><b>Rejected</b> &nbsp;{{ error }}</p>
+  {% endif %}
+  <p class="notice" id="insecure-warning" role="alert" hidden>
+    <b>Insecure origin</b> &nbsp;This page was opened over plain http, so the browser
+    blocks the camera. Reach it over https to capture. File upload still works.
+  </p>
+
+  <!-- ═══════════ 01 capture ═══════════ -->
+  <div class="chapter">
+    <span class="num">01</span><span class="name">Capture</span><span class="fill"></span>
+  </div>
+
+  <section class="bench">
+    <div>
+      <div class="bed" id="bed">
+        <video id="camera-preview" autoplay playsinline muted></video>
+        <div class="idle">
+          <span class="glyph">▣</span>
+          <span class="label">Bed empty</span>
+        </div>
+        <span class="reg tl"></span><span class="reg tr"></span>
+        <span class="reg bl"></span><span class="reg br"></span>
+      </div>
+      <canvas id="camera-canvas" class="sr-only" aria-hidden="true"></canvas>
+      <div class="bed-caption">
+        <span class="label">Scanner bed</span>
+        <span class="label" id="bed-status">Standby</span>
+      </div>
+    </div>
+
+    <div>
+      <p class="lede">Lay the receipt flat and fill the registration marks.</p>
+      <p class="prose">
+        Optical character recognition and the language model both run on this
+        machine. Nothing leaves it. Expect twenty to thirty seconds.
+      </p>
+
+      <div class="controls">
+        <button type="button" class="btn btn-stamp" id="start-camera-btn">Open camera</button>
+        <button type="button" class="btn btn-stamp" id="capture-btn" hidden>Expose &amp; process</button>
+        <button type="button" class="btn" id="stop-camera-btn" hidden>Close camera</button>
+      </div>
+
+      <div class="or-rule"><span class="label">Or file an image</span></div>
+
+      <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+        <label class="sr-only" for="receipt_image">Receipt image file</label>
         <input type="file" id="receipt_image" name="receipt_image" accept="image/*" required>
-        <button type="submit">Process Receipt</button>
-    </form>
-
-    <div class="upload-box">
-        <label><strong>Or capture with camera:</strong></label>
-        <br><br>
-        <video id="camera-preview" width="320" height="240" autoplay style="border-radius: 8px; background: #000; display: none;"></video>
-        <canvas id="camera-canvas" width="320" height="240" style="display: none;"></canvas>
-        <br>
-        <button type="button" id="start-camera-btn" style="padding: 8px 16px; background: #333; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">Start Camera</button>
-        <button type="button" id="capture-btn" style="padding: 8px 16px; background: #2a7a2a; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; display: none;">Capture & Process</button>
-        <button type="button" id="stop-camera-btn" style="padding: 8px 16px; background: #999; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; display: none;">Close Camera</button>
+        <div class="controls"><button type="submit" class="btn">Submit file</button></div>
+      </form>
     </div>
+  </section>
 
-    {% if aggregate %}
-    <div class="aggregate-box">
-        <p><strong>Overall Summary</strong></p>
-        <p>{{ aggregate.summary_en }}</p>
-        <audio controls src="/audio/aggregate_en.mp3"></audio>
-        <p>{{ aggregate.summary_hi }}</p>
-        <audio controls src="/audio/aggregate_hi.mp3"></audio>
+  <!-- ═══════════ 02 account ═══════════ -->
+  {% if aggregate %}
+  <div class="chapter">
+    <span class="num">02</span><span class="name">Summary of account</span><span class="fill"></span>
+  </div>
+
+  <section class="account">
+    <div>
+      <span class="label">English</span>
+      <p>{{ aggregate.summary_en }}</p>
+      <audio controls preload="none" src="/audio/aggregate_en.mp3"></audio>
     </div>
-    {% endif %}
+    <div>
+      <span class="label">हिंदी</span>
+      <p class="hi">{{ aggregate.summary_hi }}</p>
+      <audio controls preload="none" src="/audio/aggregate_hi.mp3"></audio>
+    </div>
+  </section>
+  {% endif %}
 
-    <form class="filters" method="get" action="/">
-        <label for="search">Search:</label>
-        <input type="text" id="search" name="search" value="{{ search_term }}" placeholder="vendor, item, text...">
+  <!-- ═══════════ 03 register ═══════════ -->
+  <div class="chapter">
+    <span class="num">03</span><span class="name">Register</span><span class="fill"></span>
+  </div>
 
-        <label for="category">Category:</label>
-        <select id="category" name="category">
-            <option value="">All</option>
-            {% for cat in categories %}
-                <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
-            {% endfor %}
-        </select>
-
-        <label for="date_from">From:</label>
-        <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
-
-        <label for="date_to">To:</label>
-        <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
-
-        <button type="submit">Filter</button>
-    </form>
-
-    {% if receipts %}
-    <table>
-        <tr>
-            <th>Vendor</th>
-            <th>Address</th>
-            <th>Date</th>
-            <th>Category</th>
-            <th>Total</th>
-            <th>Items</th>
-            <th>Summary</th>
-        </tr>
-        {% for r in receipts %}
-        <tr>
-            <td>{{ r.vendor }}</td>
-            <td>{{ r.address }}</td>
-            <td>{{ r.date }}</td>
-            <td><span class="category-tag">{{ r.category }}</span></td>
-            <td>{{ r.total }}</td>
-            <td>{{ r.item_list }}</td>
-            <td>
-                {% if r.summary_en %}
-                <div class="summary-text"><strong>EN:</strong> {{ r.summary_en }}</div>
-                <audio controls src="/audio/{{ r.filename }}_en.mp3"></audio>
-                <div class="summary-text"><strong>HI:</strong> {{ r.summary_hi }}</div>
-                <audio controls src="/audio/{{ r.filename }}_hi.mp3"></audio>
-                {% else %}
-                <span style="color: #aaa;">No summary yet</span>
-                {% endif %}
-            </td>
-        </tr>
+  <form class="query" method="get" action="/">
+    {% if show_all %}<input type="hidden" name="all" value="1">{% endif %}
+    <div class="fld">
+      <label class="label" for="search">Search</label>
+      <input type="search" id="search" name="search" value="{{ search_term }}" placeholder="vendor, item, text">
+    </div>
+    <div class="fld">
+      <label class="label" for="category">Category</label>
+      <select id="category" name="category">
+        <option value="">All</option>
+        {% for cat in categories %}
+        <option value="{{ cat }}" {% if cat == selected_category %}selected{% endif %}>{{ cat }}</option>
         {% endfor %}
-    </table>
+      </select>
+    </div>
+    <div class="fld">
+      <label class="label" for="date_from">From</label>
+      <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+    </div>
+    <div class="fld">
+      <label class="label" for="date_to">To</label>
+      <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+    </div>
+    <button type="submit" class="btn">Apply</button>
+  </form>
+
+  <div class="status">
+    {% if limited %}
+    <span class="mark">Demo view</span>
+    <span>{{ receipts|length }} of {{ total_count }} shown</span>
+    <a href="/?all=1">Open all {{ total_count }}</a>
     {% else %}
-    <div class="no-results">No receipts match your filters.</div>
+    <span>{{ receipts|length }} record{{ '' if receipts|length == 1 else 's' }}</span>
+    {% if show_all %}<a href="/">Return to demo view</a>{% endif %}
     {% endif %}
+  </div>
 
-    <script>
-        const video = document.getElementById('camera-preview');
-        const canvas = document.getElementById('camera-canvas');
-        const startBtn = document.getElementById('start-camera-btn');
-        const captureBtn = document.getElementById('capture-btn');
-        const stopBtn = document.getElementById('stop-camera-btn');
-        let stream = null;
+  {% if receipts %}
+  <div class="slips">
+    {% for r in receipts %}
+    <div class="mount" style="animation-delay: {{ loop.index0 * 55 }}ms">
+    <article class="slip{% if r.id > new_since %} fresh{% endif %}">
+      {% if r.id > new_since %}<span class="stamp">Just captured</span>{% endif %}
 
-        function stopCamera() {
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-                stream = null;
-            }
-            video.style.display = 'none';
-            video.srcObject = null;
-            startBtn.style.display = 'inline-block';
-            captureBtn.style.display = 'none';
-            stopBtn.style.display = 'none';
-        }
+      <div class="slip-head">
+        <h2 class="slip-vendor">{{ r.vendor or 'Unknown vendor' }}</h2>
+        {% if r.address %}<p class="slip-addr">{{ r.address }}</p>{% endif %}
+      </div>
 
-        startBtn.addEventListener('click', async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
-                video.style.display = 'block';
-                startBtn.style.display = 'none';
-                captureBtn.style.display = 'inline-block';
-                stopBtn.style.display = 'inline-block';
-            } catch (err) {
-                alert('Could not access camera: ' + err.message);
-            }
-        });
+      <hr class="tear">
 
-        stopBtn.addEventListener('click', stopCamera);
+      <div class="row">
+        <span class="k">Category</span><span class="dots"></span>
+        <span class="v cat cat-{{ r.category or 'other' }}"><i></i>{{ r.category or 'other' }}</span>
+      </div>
+      <div class="row">
+        <span class="k">Date</span><span class="dots"></span>
+        <span class="v">{{ r.date or '—' }}</span>
+      </div>
 
-        captureBtn.addEventListener('click', () => {
-            const context = canvas.getContext('2d');
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      {% if r.item_list %}
+      <hr class="tear">
+      <div class="items">{{ r.item_list }}</div>
+      {% endif %}
 
-            canvas.toBlob((blob) => {
-                const formData = new FormData();
-                const filename = 'captured_' + Date.now() + '.jpg';
-                formData.append('receipt_image', blob, filename);
+      <div class="total-row">
+        <span class="k">Total</span>
+        <span class="v">{% if r.total is not none %}<small>RM</small>{{ '{:,.2f}'.format(r.total) }}{% else %}—{% endif %}</span>
+      </div>
 
-                captureBtn.textContent = 'Processing...';
-                captureBtn.disabled = true;
-                stopBtn.disabled = true;
+      {% if r.summary_en %}
+      <div class="gloss">
+        <span class="lang">English</span>
+        <p>{{ r.summary_en }}</p>
+        <audio controls preload="none" src="/audio/{{ r.filename }}_en.mp3"></audio>
+      </div>
+      <div class="gloss">
+        <span class="lang">हिंदी</span>
+        <p class="hi">{{ r.summary_hi }}</p>
+        <audio controls preload="none" src="/audio/{{ r.filename }}_hi.mp3"></audio>
+      </div>
+      {% else %}
+      <div class="gloss"><p>No summary on file for this record.</p></div>
+      {% endif %}
+    </article>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="void">
+    <span class="glyph">⌀</span>
+    <span class="label">No records match this query</span>
+  </div>
+  {% endif %}
+</div>
 
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                }).then(() => {
-                    stopCamera();
-                    window.location.reload();
-                });
-            }, 'image/jpeg');
-        });
+<!-- ═══════════ press ═══════════ -->
+<div class="press" id="overlay" role="dialog" aria-modal="true" aria-labelledby="ov-title">
+  <div class="press-slip">
+    <div class="press-head">
+      <h3 id="ov-title">Processing</h3>
+      <span id="ov-elapsed">0s</span>
+    </div>
+    <div class="platen"><i></i></div>
+    <p id="ov-stage" aria-live="polite">Receiving image…</p>
+    <ul class="log" id="ov-steps">
+      <li><span class="tick">→</span>Receiving image</li>
+      <li><span class="tick">→</span>Tesseract OCR</li>
+      <li><span class="tick">→</span>Gemma2 classification</li>
+      <li><span class="tick">→</span>Bilingual summary</li>
+      <li><span class="tick">→</span>Speech synthesis</li>
+    </ul>
+  </div>
+</div>
 
-        window.addEventListener('beforeunload', stopCamera);
-    </script>
+<script>
+(function () {
+  "use strict";
+
+  var video     = document.getElementById("camera-preview");
+  var canvas    = document.getElementById("camera-canvas");
+  var bed       = document.getElementById("bed");
+  var bedStatus = document.getElementById("bed-status");
+  var startBtn  = document.getElementById("start-camera-btn");
+  var captureBtn= document.getElementById("capture-btn");
+  var stopBtn   = document.getElementById("stop-camera-btn");
+  var form      = document.getElementById("upload-form");
+  var fileInput = document.getElementById("receipt_image");
+  var overlay   = document.getElementById("overlay");
+  var ovStage   = document.getElementById("ov-stage");
+  var ovElapsed = document.getElementById("ov-elapsed");
+  var ovSteps   = document.getElementById("ov-steps");
+  var stream    = null;
+
+  /* camera permission needs a secure context (https, or localhost) */
+  if (!window.isSecureContext || !navigator.mediaDevices) {
+    document.getElementById("insecure-warning").hidden = false;
+    startBtn.disabled = true;
+    bedStatus.textContent = "Blocked";
+  }
+
+  /* ---------------- processing overlay ----------------
+     ponytail: /upload is one blocking POST with no progress channel, so the
+     stage labels advance on a timer while the elapsed counter shows real time.
+     Offsets come from three timed runs against a warm model: OCR 0.8s,
+     classify 9.9s, summaries 5.1s, audio 1.4s — about 17s in total. The
+     server warms the model at startup so these hold for the first capture
+     too. Replace with a job id + /status poll if real progress is needed. */
+  var TIMELINE = [
+    { at: 0,  text: "Receiving image…" },
+    { at: 1,  text: "Reading characters with Tesseract…" },
+    { at: 2,  text: "Classifying with the local model…" },
+    { at: 11, text: "Composing English and Hindi summaries…" },
+    { at: 16, text: "Synthesising speech…" }
+  ];
+  var timer = null;
+
+  function markSteps(index) {
+    var items = ovSteps.querySelectorAll("li");
+    for (var i = 0; i < items.length; i++) {
+      var done = i < index;
+      items[i].classList.toggle("active", i === index);
+      items[i].classList.toggle("done", done);
+      items[i].querySelector(".tick").textContent = done ? "✓" : "→";
+    }
+  }
+
+  function showOverlay() {
+    var started = Date.now();
+    overlay.classList.add("on");
+    markSteps(0);
+    ovStage.textContent = TIMELINE[0].text;
+    ovElapsed.textContent = "0s";
+
+    timer = setInterval(function () {
+      var secs = Math.floor((Date.now() - started) / 1000);
+      ovElapsed.textContent = secs + "s";
+
+      var index = 0;
+      for (var i = 0; i < TIMELINE.length; i++) {
+        if (secs >= TIMELINE[i].at) { index = i; }
+      }
+      ovStage.textContent = secs > 40
+        ? "Still working — the local model is slower on this one…"
+        : TIMELINE[index].text;
+      markSteps(index);
+    }, 250);
+  }
+
+  function hideOverlay() {
+    clearInterval(timer);
+    overlay.classList.remove("on");
+  }
+
+  /* One submit path for both the camera capture and the file upload. */
+  function submitImage(blob, filename) {
+    var data = new FormData();
+    data.append("receipt_image", blob, filename);
+
+    showOverlay();
+    startBtn.disabled = true;
+    captureBtn.disabled = true;
+
+    fetch("/upload", { method: "POST", body: data })
+      .then(function (res) {
+        stopCamera();
+        // Follow the server's redirect so an error message reaches the page.
+        window.location.href = res.url || "/";
+      })
+      .catch(function (err) {
+        hideOverlay();
+        startBtn.disabled = false;
+        captureBtn.disabled = false;
+        alert("Upload failed: " + err.message);
+      });
+  }
+
+  /* ---------------- camera ---------------- */
+
+  function stopCamera() {
+    if (stream) {
+      stream.getTracks().forEach(function (t) { t.stop(); });
+      stream = null;
+    }
+    video.srcObject = null;
+    bed.classList.remove("live");
+    startBtn.hidden = false;
+    captureBtn.hidden = true;
+    stopBtn.hidden = true;
+    bedStatus.textContent = "Standby";
+  }
+
+  startBtn.addEventListener("click", function () {
+    // Ask for the rear camera at full resolution: Tesseract needs the pixels.
+    var constraints = {
+      video: {
+        facingMode: { ideal: "environment" },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    };
+    navigator.mediaDevices.getUserMedia(constraints)
+      .then(function (s) {
+        stream = s;
+        video.srcObject = s;
+        bed.classList.add("live");
+        startBtn.hidden = true;
+        captureBtn.hidden = false;
+        stopBtn.hidden = false;
+
+        var track = s.getVideoTracks()[0];
+        var set = track.getSettings ? track.getSettings() : {};
+        bedStatus.textContent = (set.width && set.height)
+          ? set.width + " × " + set.height
+          : "Live";
+      })
+      .catch(function (err) {
+        bedStatus.textContent = "Denied";
+        alert("Could not access the camera: " + err.message +
+              "\n\nThe file upload below still works.");
+      });
+  });
+
+  stopBtn.addEventListener("click", stopCamera);
+
+  captureBtn.addEventListener("click", function () {
+    // Capture at the sensor's own resolution, NOT a fixed small canvas —
+    // downscaling here is the fastest way to destroy OCR accuracy.
+    var w = video.videoWidth;
+    var h = video.videoHeight;
+    if (!w || !h) {
+      alert("Camera is not ready yet — give it a moment and try again.");
+      return;
+    }
+    canvas.width = w;
+    canvas.height = h;
+    canvas.getContext("2d").drawImage(video, 0, 0, w, h);
+
+    canvas.toBlob(function (blob) {
+      submitImage(blob, "captured_" + Date.now() + ".jpg");
+    }, "image/jpeg", 0.95);
+  });
+
+  /* ---------------- file upload ---------------- */
+
+  form.addEventListener("submit", function (e) {
+    if (!fileInput.files || !fileInput.files.length) { return; }
+    e.preventDefault();
+    var f = fileInput.files[0];
+    submitImage(f, f.name);
+  });
+
+  window.addEventListener("beforeunload", stopCamera);
+})();
+</script>
 </body>
 </html>
