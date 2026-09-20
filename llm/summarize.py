@@ -45,13 +45,13 @@ def generate_receipt_summary(vendor, date, category, total, items):
 
 
 def generate_aggregate_summary(rows):
-    total_spent = sum(row[4] for row in rows if row[4] is not None)
+    total_spent = sum(row[5] for row in rows if row[5] is not None)
     count = len(rows)
 
     category_totals = {}
     for row in rows:
-        cat = row[5]
-        amt = row[4] or 0
+        cat = row[6]
+        amt = row[5] or 0
         category_totals[cat] = category_totals.get(cat, 0) + amt
 
     category_breakdown = ", ".join(
@@ -85,16 +85,16 @@ Return ONLY a valid JSON object with this exact structure, nothing else:
 
 if __name__ == "__main__":
     rows = get_all_receipts()
-    # Column order: id, filename, vendor, date, total, category, items, ocr_text, recommendation_summary, created_at
+    # Column order: id, filename, vendor, address, date, total, category, items, ocr_text, recommendation_summary, created_at
 
     for row in rows:
         filename = row[1]
         vendor = row[2]
-        date = row[3]
-        total = row[4]
-        category = row[5]
-        items = row[6]
-        existing_summary = row[8]
+        date = row[4]
+        total = row[5]
+        category = row[6]
+        items = row[7]
+        existing_summary = row[9]
 
         if existing_summary:
             print(f"Skipping (already summarized): {filename}")
