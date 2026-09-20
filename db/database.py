@@ -68,13 +68,69 @@ def get_receipt_by_filename(filename):
     return row
 
 
-def get_all_receipts():
+def get_all_receipts(limit=None):
+    """
+    Returns receipts newest-first. Ordering is by id, not date: the date
+    column holds raw OCR strings that are not always parseable
+    (e.g. "Frid=w, 29-12-2017"), so a date sort would not reliably put a
+    freshly captured receipt first.
+    """
     conn = get_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM receipts ORDER BY date DESC")
+    if limit is None:
+        cursor.execute("SELECT * FROM receipts ORDER BY id DESC")
+    else:
+        cursor.execute("SELECT * FROM receipts ORDER BY id DESC LIMIT ?", (limit,))
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+
+def get_demo_receipts(pinned_ids, since_id):
+    """
+    The curated demo view: a fixed set of pinned receipts, plus every receipt
+    added after since_id (i.e. anything captured live during the demo).
+    Newest first.
+    """
+    conn = get_connection()
+    cursor = conn.cursor()
+    placeholders = ",".join("?" for _ in pinned_ids) or "NULL"
+    cursor.execute(
+        f"SELECT * FROM receipts WHERE id IN ({placeholders}) OR id > ? "
+        "ORDER BY id DESC",
+        (*pinned_ids, since_id),
+    )
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
+
+
+def max_receipt_id():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COALESCE(MAX(id), 0) FROM receipts")
+    value = cursor.fetchone()[0]
+    conn.close()
+    return value
+
+
+def count_receipts():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM receipts")
+    count = cursor.fetchone()[0]
+    conn.close()
+    return count
+
+
+def receipt_stats():
+    """(count, total spent) across every receipt, for the ledger header."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*), COALESCE(SUM(total), 0) FROM receipts")
+    count, total = cursor.fetchone()
+    conn.close()
+    return count, total
 
 
 def filter_receipts(category=None, date_from=None, date_to=None, search_term=None):
@@ -98,7 +154,7 @@ def filter_receipts(category=None, date_from=None, date_to=None, search_term=Non
         like_term = f"%{search_term}%"
         params.extend([like_term, like_term, like_term])
 
-    query += " ORDER BY date DESC"
+    query += " ORDER BY id DESC"
     cursor.execute(query, params)
     rows = cursor.fetchall()
     conn.close()

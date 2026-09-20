@@ -2,8 +2,10 @@
 __pycache__/
 *.pyc
 data/audio/
+data/raw/
 data/ocr_text/
 data/classified/
 data/processed/
 db/receipts.db
 .DS_Store
+certs/

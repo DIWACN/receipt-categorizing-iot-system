@@ -75,6 +75,22 @@ def normalize_date(date_value):
     return date_str
 
 
+def warm_up():
+    """
+    Pull the model into memory with a throwaway generation.
+
+    Ollama unloads an idle model after ~5 minutes. Measured, that costs the
+    first capture about 12 extra seconds inside classify_receipt (21.7s cold
+    versus 9.9s warm), which would land on the first receipt of a live demo.
+    """
+    try:
+        ollama.generate(model=MODEL_NAME, prompt="ok", options={"num_predict": 1})
+        return True
+    except Exception as exc:
+        print(f"  model warm-up failed ({exc}); first capture will be slower")
+        return False
+
+
 def classify_receipt(ocr_text):
     prompt = PROMPT_TEMPLATE.format(
         categories=", ".join(CATEGORIES),

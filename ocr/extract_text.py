@@ -2,6 +2,7 @@ import pytesseract
 import cv2
 import os
 import sys
+import time
 
 sys.path.append(os.path.dirname(__file__))
 from preprocess import preprocess_image
@@ -38,14 +39,31 @@ def extract_text(image_path, min_length_threshold=40):
     """
     Tries the fast direct approach first. If the result looks too short
     (likely garbled/failed OCR), falls back to the full preprocessing pipeline.
-    """
-    text = extract_text_direct(image_path)
 
-    if len(text.strip()) < min_length_threshold:
-        print(f"  (direct OCR too short, retrying with preprocessing)")
+    Records which path won in extract_text.last_path and logs the timing of
+    each, so a slow capture can be attributed to OCR rather than guessed at.
+    """
+    t0 = time.perf_counter()
+    text = extract_text_direct(image_path)
+    fast_secs = time.perf_counter() - t0
+    fast_chars = len(text.strip())
+
+    if fast_chars < min_length_threshold:
+        t1 = time.perf_counter()
         text = extract_text_preprocessed(image_path)
+        slow_secs = time.perf_counter() - t1
+        extract_text.last_path = "fallback"
+        print(f"  OCR fast {fast_secs:.2f}s -> {fast_chars} chars "
+              f"(under {min_length_threshold}); fallback {slow_secs:.2f}s "
+              f"-> {len(text.strip())} chars")
+    else:
+        extract_text.last_path = "fast"
+        print(f"  OCR fast {fast_secs:.2f}s -> {fast_chars} chars")
 
     return text
+
+
+extract_text.last_path = None
 
 
 if __name__ == "__main__":

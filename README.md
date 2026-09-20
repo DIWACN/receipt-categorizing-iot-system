@@ -69,8 +69,40 @@ python db/database.py            # Initialize the database
 python db/load_data.py           # Load classified data into SQLite
 python llm/summarize.py          # Generate English + Hindi summaries
 python tts/generate_audio.py     # Generate audio for summaries
-python dashboard/app.py          # Launch the dashboard at http://127.0.0.1:5000
+python dashboard/app.py          # Launch the dashboard
 ```
+
+The dashboard prints the URLs to use on startup. It listens on **port 5001**,
+not 5000: macOS Control Center (AirPlay Receiver) already holds `*:5000`, so
+binding `0.0.0.0:5000` fails.
+
+## Capturing from a phone over HTTPS
+
+Mobile browsers only allow camera access in a secure context, so a plain
+`http://` LAN address cannot use `getUserMedia` no matter how trusted the
+network is. To capture from a phone on the same WiFi:
+
+```bash
+brew install mkcert && mkcert -install
+```
+```bash
+mkdir -p certs && cd certs && mkcert "$(ipconfig getifaddr en0)" localhost 127.0.0.1
+```
+
+`app.py` picks up any key pair in `certs/` automatically and serves over HTTPS
+on `0.0.0.0`. Install `$(mkcert -CAROOT)/rootCA.pem` on the phone and mark it
+trusted, then open the `https://<mac-lan-ip>:5001` URL the server prints.
+Regenerate the certificate if the Mac's LAN IP changes.
+
+## Demo mode
+
+An unfiltered dashboard shows a small curated set instead of every receipt, so
+it loads fast during a live demo. Nothing is deleted; "Show all" and any search
+or filter still reach every record.
+
+- `DEMO_IDS`: receipt ids to pin, e.g. `"76,75,71"` (the default). Anything captured after the server starts is always shown too.
+- `DEMO_LIMIT`: used when `DEMO_IDS` is empty, shows the N newest.
+- Set `DEMO_IDS="" DEMO_LIMIT=0` to show everything.
 
 ## Design notes
 

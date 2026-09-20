@@ -6,10 +6,13 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "db"))
 from database import get_all_receipts
 
-AUDIO_FOLDER = os.path.join("data", "audio")
+# Absolute, so audio lands in the same folder the dashboard serves from
+# regardless of which directory the process was launched from.
+AUDIO_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "audio")
 
 
 def generate_audio_for_text(text, lang_code, output_path):
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     tts = gTTS(text=text, lang=lang_code)
     tts.save(output_path)
 
@@ -45,7 +48,7 @@ if __name__ == "__main__":
 
     for row in rows:
         filename = row[1]
-        recommendation_summary = row[8]
+        recommendation_summary = row[9]
 
         print(f"Generating audio: {filename}...")
         generate_receipt_audio(filename, recommendation_summary)
