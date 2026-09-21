@@ -9,3 +9,4 @@ data/processed/
 db/receipts.db
 .DS_Store
 certs/
+.claude/settings.local.json
