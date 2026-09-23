@@ -6,6 +6,17 @@
 <meta name="theme-color" content="#ece7dc">
 <title>Receipt Ledger</title>
 <link rel="stylesheet" href="/static/fonts/fonts.css">
+<script>
+/* Runs before first paint so a stored dark choice never flashes bone-white. */
+(function () {
+  try {
+    var t = localStorage.getItem("ledger.theme");
+    if (t === "light" || t === "dark") {
+      document.documentElement.setAttribute("data-theme", t);
+    }
+  } catch (e) { /* private mode: fall through to the OS preference */ }
+})();
+</script>
 <style>
 /* ══════════════════════════════════════════════════════════════════
    RECEIPT LEDGER
@@ -43,8 +54,12 @@
   --grain-alpha: .38;
 }
 
+/* Carbon copy. Three states: no data-theme follows the OS, while an explicit
+   choice from the masthead toggle overrides it in either direction. The token
+   list is repeated because a media query and a plain selector cannot share
+   one rule — keep the two lists in step. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --paper:      #131110;
     --slip:       #1c1917;
     --slip-2:     #232020;
@@ -69,6 +84,31 @@
     --grain-blend: overlay;
     --grain-alpha: .22;
   }
+}
+:root[data-theme="dark"] {
+    --paper:      #131110;
+    --slip:       #1c1917;
+    --slip-2:     #232020;
+    --ink:        #ebe5d9;
+    --ink-2:      #a09788;
+    --ink-3:      #6d6659;
+    --rule:       #332e28;
+    --rule-soft:  #272320;
+    --stamp:      #e2603c;
+    --stamp-ink:  #131110;
+    --stamp-wash: rgba(226, 96, 60, .12);
+
+    --c-groceries:   #8fbb6e;
+    --c-restaurant:  #e0964f;
+    --c-fuel:        #77aacb;
+    --c-pharmacy:    #dd7d99;
+    --c-retail:      #b294d0;
+    --c-electronics: #5fb6b8;
+    --c-hardware:    #c9ad5a;
+    --c-other:       #9b9386;
+
+    --grain-blend: overlay;
+    --grain-alpha: .22;
 }
 
 * { box-sizing: border-box; }
@@ -458,10 +498,14 @@ input[type=file]::file-selector-button {
   animation: feed .5s cubic-bezier(.2, .7, .3, 1) backwards;
 }
 @media (prefers-color-scheme: dark) {
-  .mount {
+  :root:not([data-theme="light"]) .mount {
     filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5))
             drop-shadow(0 10px 20px rgba(0, 0, 0, .4));
   }
+}
+:root[data-theme="dark"] .mount {
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .5))
+          drop-shadow(0 10px 20px rgba(0, 0, 0, .4));
 }
 @keyframes feed {
   from { opacity: 0; transform: translateY(14px); }
@@ -568,14 +612,69 @@ input[type=file]::file-selector-button {
 .gloss p.hi { font-family: var(--deva); font-size: 12px; line-height: 1.8; }
 .gloss + .gloss { margin-top: 14px; border-top: 1px dashed var(--rule); }
 
-audio {
-  width: 100%;
-  height: 30px;
-  display: block;
-  filter: grayscale(1) contrast(.9);
-  opacity: .8;
+/* ─────────── global audio language toggle ─────────── */
+
+.toggles {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
 }
-audio:hover { opacity: 1; }
+.toggles .label { color: var(--ink-3); }
+@media (max-width: 620px) {
+  .masthead-figure { text-align: left; }
+  .toggles { justify-content: flex-start; }
+}
+.segmented { display: flex; border: 1px solid var(--ink); }
+.seg {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background .13s, color .13s;
+}
+.seg + .seg { border-left: 1px solid var(--ink); }
+.seg:hover { background: var(--rule-soft); }
+.seg[aria-pressed="true"] { background: var(--stamp); color: var(--stamp-ink); }
+.seg[aria-pressed="true"]:hover { background: var(--stamp); }
+.seg:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.seg.hi { font-family: var(--deva); letter-spacing: .04em; }
+
+/* ─────────── play / pause button ─────────── */
+
+.listen { padding-top: 13px; }
+.play {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--rule);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: border-color .13s, color .13s, background .13s;
+}
+.play:hover { border-color: var(--ink); color: var(--ink); }
+.play:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.play svg { width: 12px; height: 12px; flex: none; display: block; }
+.play .ico-pause { display: none; }
+.play.playing { border-color: var(--stamp); color: var(--stamp); }
+.play.playing .ico-play { display: none; }
+.play.playing .ico-pause { display: block; }
+.play.missing { opacity: .45; cursor: not-allowed; }
 
 /* rubber stamp on a freshly captured slip */
 .slip.fresh { background: var(--slip-2); }
@@ -689,6 +788,59 @@ audio:hover { opacity: 1; }
 </head>
 <body>
 
+{% macro slip(r, delay, new_since) %}
+    <div class="mount" style="animation-delay: {{ delay }}ms">
+    <article class="slip{% if r.id > new_since %} fresh{% endif %}">
+      {% if r.id > new_since %}<span class="stamp">Just captured</span>{% endif %}
+
+      <div class="slip-head">
+        <h2 class="slip-vendor">{{ r.vendor or 'Unknown vendor' }}</h2>
+        {% if r.address %}<p class="slip-addr">{{ r.address }}</p>{% endif %}
+      </div>
+
+      <hr class="tear">
+
+      <div class="row">
+        <span class="k">Category</span><span class="dots"></span>
+        <span class="v cat cat-{{ r.category or 'other' }}"><i></i>{{ r.category or 'other' }}</span>
+      </div>
+      <div class="row">
+        <span class="k">Date</span><span class="dots"></span>
+        <span class="v">{{ r.date or '—' }}</span>
+      </div>
+
+      {% if r.item_list %}
+      <hr class="tear">
+      <div class="items">{{ r.item_list }}</div>
+      {% endif %}
+
+      <div class="total-row">
+        <span class="k">Total</span>
+        <span class="v">{% if r.total is not none %}<small>RM</small>{{ '{:,.2f}'.format(r.total) }}{% else %}—{% endif %}</span>
+      </div>
+
+      {% if r.summary_en %}
+      <div class="gloss">
+        <span class="lang">English</span>
+        <p>{{ r.summary_en }}</p>
+      </div>
+      <div class="gloss">
+        <span class="lang">हिंदी</span>
+        <p class="hi">{{ r.summary_hi }}</p>
+      </div>
+      <div class="listen">
+        <button type="button" class="play" data-audio="{{ r.filename }}">
+          <span class="ico-play" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5z"/></svg></span>
+          <span class="ico-pause" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/></svg></span>
+        </button>
+      </div>
+      {% else %}
+      <div class="gloss"><p>No summary on file for this record.</p></div>
+      {% endif %}
+    </article>
+    </div>
+{% endmacro %}
+
 <div class="sheet">
 
   <!-- ═══════════ masthead ═══════════ -->
@@ -698,6 +850,18 @@ audio:hover { opacity: 1; }
       <div class="masthead-figure">
         <span class="label">Total recorded</span>
         <span class="amount"><span>RM</span>{{ '{:,.2f}'.format(total_spent or 0) }}</span>
+        <div class="toggles">
+          <span class="label">Audio</span>
+          <div class="segmented" role="group" aria-label="Audio playback language">
+            <button type="button" class="seg" data-lang="en" aria-pressed="true">EN</button>
+            <button type="button" class="seg hi" data-lang="hi" aria-pressed="false">हिंदी</button>
+          </div>
+          <span class="label">Stock</span>
+          <div class="segmented" role="group" aria-label="Colour theme">
+            <button type="button" class="seg" data-theme-set="light" aria-pressed="false">Bone</button>
+            <button type="button" class="seg" data-theme-set="dark" aria-pressed="false">Carbon</button>
+          </div>
+        </div>
       </div>
     </div>
     <hr class="rule-double">
@@ -709,6 +873,9 @@ audio:hover { opacity: 1; }
     </div>
   </header>
 
+  {% set fresh = receipts | selectattr('id', 'gt', new_since) | list %}
+  {% set rest  = receipts | rejectattr('id', 'gt', new_since) | list %}
+
   {% if error %}
   <p class="notice" role="alert"><b>Rejected</b> &nbsp;{{ error }}</p>
   {% endif %}
@@ -716,6 +883,16 @@ audio:hover { opacity: 1; }
     <b>Insecure origin</b> &nbsp;This page was opened over plain http, so the browser
     blocks the camera. Reach it over https to capture. File upload still works.
   </p>
+
+  <!-- ═══════════ just captured — only rendered while one exists this session ═══════════ -->
+  {% if fresh %}
+  <div class="chapter">
+    <span class="num">✳</span><span class="name">Just captured</span><span class="fill"></span>
+  </div>
+  <div class="slips">
+    {% for r in fresh %}{{ slip(r, loop.index0 * 55, new_since) }}{% endfor %}
+  </div>
+  {% endif %}
 
   <!-- ═══════════ 01 capture ═══════════ -->
   <div class="chapter">
@@ -773,14 +950,18 @@ audio:hover { opacity: 1; }
     <div>
       <span class="label">English</span>
       <p>{{ aggregate.summary_en }}</p>
-      <audio controls preload="none" src="/audio/aggregate_en.mp3"></audio>
     </div>
     <div>
       <span class="label">हिंदी</span>
       <p class="hi">{{ aggregate.summary_hi }}</p>
-      <audio controls preload="none" src="/audio/aggregate_hi.mp3"></audio>
     </div>
   </section>
+  <div class="listen">
+    <button type="button" class="play" data-audio="aggregate">
+      <span class="ico-play" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><path d="M2 1l9 5-9 5z"/></svg></span>
+      <span class="ico-pause" aria-hidden="true"><svg viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="1" width="3" height="10"/><rect x="7" y="1" width="3" height="10"/></svg></span>
+    </button>
+  </div>
   {% endif %}
 
   <!-- ═══════════ 03 register ═══════════ -->
@@ -825,58 +1006,11 @@ audio:hover { opacity: 1; }
     {% endif %}
   </div>
 
-  {% if receipts %}
+  {% if rest %}
   <div class="slips">
-    {% for r in receipts %}
-    <div class="mount" style="animation-delay: {{ loop.index0 * 55 }}ms">
-    <article class="slip{% if r.id > new_since %} fresh{% endif %}">
-      {% if r.id > new_since %}<span class="stamp">Just captured</span>{% endif %}
-
-      <div class="slip-head">
-        <h2 class="slip-vendor">{{ r.vendor or 'Unknown vendor' }}</h2>
-        {% if r.address %}<p class="slip-addr">{{ r.address }}</p>{% endif %}
-      </div>
-
-      <hr class="tear">
-
-      <div class="row">
-        <span class="k">Category</span><span class="dots"></span>
-        <span class="v cat cat-{{ r.category or 'other' }}"><i></i>{{ r.category or 'other' }}</span>
-      </div>
-      <div class="row">
-        <span class="k">Date</span><span class="dots"></span>
-        <span class="v">{{ r.date or '—' }}</span>
-      </div>
-
-      {% if r.item_list %}
-      <hr class="tear">
-      <div class="items">{{ r.item_list }}</div>
-      {% endif %}
-
-      <div class="total-row">
-        <span class="k">Total</span>
-        <span class="v">{% if r.total is not none %}<small>RM</small>{{ '{:,.2f}'.format(r.total) }}{% else %}—{% endif %}</span>
-      </div>
-
-      {% if r.summary_en %}
-      <div class="gloss">
-        <span class="lang">English</span>
-        <p>{{ r.summary_en }}</p>
-        <audio controls preload="none" src="/audio/{{ r.filename }}_en.mp3"></audio>
-      </div>
-      <div class="gloss">
-        <span class="lang">हिंदी</span>
-        <p class="hi">{{ r.summary_hi }}</p>
-        <audio controls preload="none" src="/audio/{{ r.filename }}_hi.mp3"></audio>
-      </div>
-      {% else %}
-      <div class="gloss"><p>No summary on file for this record.</p></div>
-      {% endif %}
-    </article>
-    </div>
-    {% endfor %}
+    {% for r in rest %}{{ slip(r, loop.index0 * 55, new_since) }}{% endfor %}
   </div>
-  {% else %}
+  {% elif not receipts %}
   <div class="void">
     <span class="glyph">⌀</span>
     <span class="label">No records match this query</span>
@@ -1081,6 +1215,144 @@ audio:hover { opacity: 1; }
   });
 
   window.addEventListener("beforeunload", stopCamera);
+})();
+
+/* ══════════ audio: one global language, one player, one play at a time ══════════ */
+(function () {
+  "use strict";
+
+  var STORE = "ledger.audioLang";
+  var segs  = document.querySelectorAll(".seg[data-lang]");
+  var btns  = document.querySelectorAll(".play[data-audio]");
+  if (!btns.length) { return; }
+
+  var lang = "en";
+  try {
+    var saved = localStorage.getItem(STORE);
+    if (saved === "en" || saved === "hi") { lang = saved; }
+  } catch (e) { /* private mode: fall back to the default */ }
+
+  // One element reused by every button, which is what makes "only one plays
+  // at a time" fall out for free rather than needing to be policed.
+  var player = new Audio();
+  var active = null;
+
+  function reset() {
+    if (active) { active.classList.remove("playing"); setText(active, "Play"); }
+    active = null;
+  }
+
+  // Glyph-only buttons, so the state has to live in the accessible name.
+  function setText(btn, txt) {
+    var who = btn.dataset.audio === "aggregate" ? "overall summary" : "this receipt";
+    var name = txt + " " + (lang === "hi" ? "Hindi" : "English") + " summary of " + who;
+    btn.setAttribute("aria-label", name);
+    btn.setAttribute("title", name);
+  }
+
+  function label(btn) { setText(btn, "Play"); }
+
+  function applyLang() {
+    for (var i = 0; i < segs.length; i++) {
+      segs[i].setAttribute("aria-pressed", segs[i].dataset.lang === lang ? "true" : "false");
+    }
+    for (var j = 0; j < btns.length; j++) {
+      btns[j].classList.remove("missing");
+      label(btns[j]);
+    }
+    // Stop rather than switch mid-sentence: a half-English, half-Hindi clip
+    // is more confusing than simply starting over in the new language.
+    player.pause();
+    reset();
+  }
+
+  for (var i = 0; i < segs.length; i++) {
+    segs[i].addEventListener("click", function () {
+      lang = this.dataset.lang;
+      try { localStorage.setItem(STORE, lang); } catch (e) { /* ignore */ }
+      applyLang();
+    });
+  }
+
+  for (var k = 0; k < btns.length; k++) {
+    btns[k].addEventListener("click", function () {
+      var btn = this;
+
+      if (active === btn && !player.paused) { player.pause(); reset(); return; }
+
+      reset();
+      player.pause();
+      player.src = "/audio/" + btn.dataset.audio + "_" + lang + ".mp3";
+
+      var play = player.play();
+      active = btn;
+      btn.classList.add("playing");
+      setText(btn, "Pause");
+
+      if (play && play.catch) {
+        play.catch(function () {
+          // Usually a missing file for this language, e.g. TTS never ran.
+          reset();
+          btn.classList.add("missing");
+          setText(btn, "No audio for");
+        });
+      }
+    });
+  }
+
+  player.addEventListener("ended", reset);
+  player.addEventListener("error", function () {
+    if (active) { active.classList.add("missing"); setText(active, "No audio for"); }
+    reset();
+  });
+
+  applyLang();
+})();
+
+/* ══════════ theme: explicit bone/carbon choice, else follow the OS ══════════ */
+(function () {
+  "use strict";
+
+  var STORE = "ledger.theme";
+  var segs  = document.querySelectorAll(".seg[data-theme-set]");
+  var meta  = document.querySelector('meta[name="theme-color"]');
+  var root  = document.documentElement;
+  if (!segs.length) { return; }
+
+  var system = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  function current() {
+    var set = root.getAttribute("data-theme");
+    if (set === "light" || set === "dark") { return set; }
+    return (system && system.matches) ? "dark" : "light";
+  }
+
+  function paint() {
+    var now = current();
+    for (var i = 0; i < segs.length; i++) {
+      segs[i].setAttribute("aria-pressed", segs[i].dataset.themeSet === now ? "true" : "false");
+    }
+    // Keep the browser chrome in step with the page stock.
+    if (meta) { meta.setAttribute("content", now === "dark" ? "#131110" : "#ece7dc"); }
+  }
+
+  for (var i = 0; i < segs.length; i++) {
+    segs[i].addEventListener("click", function () {
+      var pick = this.dataset.themeSet;
+      root.setAttribute("data-theme", pick);
+      try { localStorage.setItem(STORE, pick); } catch (e) { /* ignore */ }
+      paint();
+    });
+  }
+
+  // Track the OS only while the reader has not overridden it.
+  if (system && system.addEventListener) {
+    system.addEventListener("change", function () {
+      if (!root.getAttribute("data-theme")) { paint(); }
+    });
+  }
+
+  paint();
 })();
 </script>
 </body>
